@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>BETSCORE</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box} body{background:#0f172a;color:white;font-family:Arial,sans-serif}
+header{background:#111a33;padding:22px 0 12px 0;text-align:center}
+.logo{color:#22c55e;font-size:22px;font-weight:900;letter-spacing:0.5px}
+.logo::before{content:'⚽ '}
+.menu{background:#111a33;text-align:center;padding:10px 0 16px 0;display:flex;justify-content:center;gap:32px;border-bottom:1px solid #1e293b}
+.menu a{color:#cbd5e1;text-decoration:none;font-size:11px;font-weight:700;text-transform:uppercase}
+.menu a.ativo{color:#22c55e;text-decoration:underline;text-underline-offset:6px;text-decoration-thickness:2px}
+.container{max-width:680px;margin:30px auto;padding:0 15px;text-align:center}
+.titulo{font-size:20px;font-weight:800;margin-bottom:20px;text-align:left}
+.wrap{position:relative;overflow:hidden;border-radius:12px;background:#1e293b;text-align:left}
+.carrossel{display:flex;transition:transform.5s}
+.slide{min-width:100%}
+.slide img{width:100%;height:380px;object-fit:cover;display:block}
+.info{padding:14px}.info h3{font-size:14px;margin-bottom:6px}.info p{font-size:12px;color:#94a3b8;margin-bottom:8px}
+.saiba{background:#22c55e;color:white;border:none;padding:6px 12px;border-radius:15px;font-size:11px;font-weight:bold;cursor:pointer}
+.btn{position:absolute;top:40%;background:rgba(0,0,0,.6);border:1px solid #22c55e;color:white;width:32px;height:32px;border-radius:50%;cursor:pointer}
+.prev{left:8px}.next{right:8px}
+.dots{margin-top:10px}.dot{width:8px;height:8px;background:#334155;border-radius:50%;display:inline-block;margin:0 3px;cursor:pointer}.dot.ativo{background:#22c55e;width:18px}
+#artigo{display:none;max-width:680px;margin:30px auto;background:#1e293b;border-radius:12px;overflow:hidden;text-align:left}
+#artigo img{width:100%;height:350px;object-fit:cover}.conteudo{padding:18px}
+</style></head>
+<body>
+<header><div class="logo">BETSCORE</div></header>
+<div class="menu">
+<a href="main.html" class="ativo">Notícias do Dia</a>
+<a href="jogos.html">Jogos em Destaques</a>
+<a href="previsoes.html">Previsões dos Jogos</a>
+</div>
+<div class="container">
+<h1 class="titulo">NOTÍCIAS DO DIA</h1>
+<div class="wrap" id="wrap"><div class="carrossel" id="carrossel"><p style="padding:40px">Carregando...</p></div><button class="btn prev" id="prev">‹</button><button class="btn next" id="next">›</button></div>
+<div class="dots" id="dots"></div>
+</div>
+<div id="artigo"><div class="conteudo"><button onclick="document.getElementById('artigo').style.display='none';document.querySelector('.container').style.display='block'" style="background:transparent;border:1px solid #22c55e;color:#22c55e;padding:5px 10px;border-radius:15px;font-size:11px;cursor:pointer;margin-bottom:12px">← Voltar</button><div id="artigo-txt"></div></div></div>
+<script>
+let lista=[],idx=0,interv;
+async function carregar(){ const c=document.getElementById("carrossel"),d=document.getElementById("dots"); try{ const r=await fetch("https://site.api.espn.com/apis/site/v2/sports/soccer/bra.1/news"); const j=await r.json(); lista=j.articles.slice(0,10); c.innerHTML="";d.innerHTML=""; lista.forEach((a,i)=>{ const img=a.images?.[0]?.url||""; const s=document.createElement("div");s.className="slide";s.innerHTML=`<img src="${img}"><div class="info"><h3>${a.headline}</h3><p>${a.description||''}</p><button class="saiba" onclick="abrir(${i})">Ler no BETSCORE</button></div>`;c.appendChild(s); const dot=document.createElement("span");dot.className=`dot ${i==0?'ativo':''}`;dot.onclick=()=>go(i);d.appendChild(dot);}); iniciar(); }catch(e){c.innerHTML="Erro Live Server"} }
+function abrir(i){ const a=lista[i]; document.querySelector(".container").style.display="none"; document.getElementById("artigo").style.display="block"; document.getElementById("artigo-txt").innerHTML=`<img src="${a.images?.[0]?.url||''}"><h3 style="margin:12px 0">${a.headline}</h3><p style="color:#cbd5e1;font-size:13px;line-height:1.5">${a.description||''}</p>`; clearInterval(interv); window.scrollTo(0,0); }
+function upd(){document.getElementById("carrossel").style.transform=`translateX(-${idx*100}%)`; document.querySelectorAll(".dot").forEach((e,i)=>e.classList.toggle("ativo",i==idx));}
+function go(i){idx=i;upd();restart()} function next(){idx=(idx+1)%lista.length;upd()} function iniciar(){interv=setInterval(next,4000)} function restart(){clearInterval(interv);iniciar()}
+document.getElementById("next").onclick=()=>{next();restart()}; document.getElementById("prev").onclick=()=>{idx=(idx-1+lista.length)%lista.length;upd();restart()}; document.addEventListener("DOMContentLoaded",carregar);
+</script></body></html>

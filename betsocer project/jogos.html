@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>BETSCORE</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box} body{background:#0f172a;color:white;font-family:Arial,sans-serif}
+header{background:#111a33;padding:22px 0 12px 0;text-align:center}
+.logo{color:#22c55e;font-size:22px;font-weight:900;letter-spacing:0.5px}
+.logo::before{content:'⚽ '}
+.menu{background:#111a33;text-align:center;padding:10px 0 16px 0;display:flex;justify-content:center;gap:32px;border-bottom:1px solid #1e293b}
+.menu a{color:#cbd5e1;text-decoration:none;font-size:11px;font-weight:700;text-transform:uppercase}
+.menu a.ativo{color:#22c55e;text-decoration:underline;text-underline-offset:6px;text-decoration-thickness:2px}
+.container{max-width:680px;margin:30px auto;padding:0 15px;text-align:center}
+.titulo{font-size:20px;font-weight:800;margin-bottom:6px;text-align:left}
+.sub{font-size:11px;color:#64748b;margin-bottom:18px;text-align:left}
+.grid{display:grid;grid-template-columns:1fr;gap:12px}
+.card{background:#1e293b;border-radius:10px;padding:12px;text-align:left}
+.liga{display:flex;justify-content:space-between;font-size:10px;color:#64748b;text-transform:uppercase;font-weight:600;margin-bottom:8px}
+.tag{background:#334155;color:white;padding:2px 7px;border-radius:8px;font-size:9px}
+.times{display:flex;justify-content:space-between;align-items:center}
+.time{display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px}
+.time img{width:28px;height:28px;background:white;border-radius:50%;padding:2px;object-fit:contain}
+.placar{font-weight:800;font-size:16px}.vs{color:#475569;font-size:11px}
+.rodape{margin-top:8px;font-size:10px;color:#475569}
+</style></head>
+<body>
+<header><div class="logo">BETSCORE</div></header>
+<div class="menu">
+<a href="main.html">Notícias do Dia</a>
+<a href="jogos.html" class="ativo">Jogos em Destaques</a>
+<a href="previsoes.html">Previsões dos Jogos</a>
+</div>
+<div class="container">
+<h1 class="titulo">JOGOS EM DESTAQUES</h1>
+<p class="sub" id="sub">Buscando próximos jogos...</p>
+<div class="grid" id="lista"></div>
+</div>
+<script>
+async function carregar(){
+const lista=document.getElementById("lista"), sub=document.getElementById("sub");
+let jogos=[],dia=0;
+function getD(o){const d=new Date();d.setDate(d.getDate()+o);return d.toISOString().split('T')[0].replace(/-/g,'')}
+function getBR(o){const d=new Date();d.setDate(d.getDate()+o);return d.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'})}
+for(let i=0;i<7;i++){
+ const dt=getD(i);
+ for(let l of ["bra.1","eng.1","esp.1"]){
+  try{const r=await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/${l}/scoreboard?dates=${dt}`);const j=await r.json();if(j.events){const f=j.events.filter(e=>e.competitions[0].status.type.state!=='post');if(f.length){f.forEach(e=>e.liga=j.leagues[0].abbreviation);jogos=jogos.concat(f);dia=i;}}}catch(e){}
+ }
+ if(jogos.length)break;
+}
+if(jogos.length==0){
+ sub.innerText="Sem jogos futuros hoje, mostrando resultados dos últimos jogos";
+ const r=await fetch("https://site.api.espn.com/apis/site/v2/sports/soccer/bra.1/scoreboard");const j=await r.json();jogos=j.events||[];jogos.forEach(e=>e.liga="BRA");
+}else{ sub.innerText=`Próximos jogos - ${getBR(dia)}`; }
+lista.innerHTML=""; jogos.slice(0,10).forEach(j=>{
+ const c=j.competitions[0];const ca=c.competitors[0];const fo=c.competitors[1];
+ lista.innerHTML+=`<div class="card"><div class="liga"><span>${j.liga}</span><span class="tag">${c.status.type.shortDetail}</span></div><div class="times"><div class="time"><img src="${ca.team.logo}"><span>${ca.team.abbreviation}</span></div><div class="placar">${c.status.type.state=='pre'?'<span class="vs">VS</span>':`${ca.score}-${fo.score}`}</div><div class="time"><span>${fo.team.abbreviation}</span><img src="${fo.team.logo}"></div></div><div class="rodape">${c.status.type.detail}</div></div>`;
+});
+}
+document.addEventListener("DOMContentLoaded",carregar);
+</script></body></html>

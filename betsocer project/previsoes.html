@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>BETSCORE</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box} body{background:#0f172a;color:white;font-family:Arial,sans-serif}
+header{background:#111a33;padding:22px 0 12px 0;text-align:center}
+.logo{color:#22c55e;font-size:22px;font-weight:900;letter-spacing:0.5px}
+.logo::before{content:'⚽ '}
+.menu{background:#111a33;text-align:center;padding:10px 0 16px 0;display:flex;justify-content:center;gap:32px;border-bottom:1px solid #1e293b}
+.menu a{color:#cbd5e1;text-decoration:none;font-size:11px;font-weight:700;text-transform:uppercase}
+.menu a.ativo{color:#22c55e;text-decoration:underline;text-underline-offset:6px;text-decoration-thickness:2px}
+.container{max-width:900px;margin:30px auto;padding:0 15px;display:grid;grid-template-columns:1fr 320px;gap:16px}
+@media(max-width:800px){.container{grid-template-columns:1fr}}
+.titulo{grid-column:1/-1;font-size:20px;font-weight:800;margin-bottom:4px;text-align:left}
+.sub{grid-column:1/-1;font-size:11px;color:#64748b;margin-bottom:12px;text-align:left}
+.lista-jogos{display:flex;flex-direction:column;gap:10px}
+.card-jogo{background:#1e293b;border-radius:10px;padding:12px;border:1px solid #1e293b}
+.liga{display:flex;justify-content:space-between;font-size:10px;color:#64748b;text-transform:uppercase;font-weight:600;margin-bottom:8px}
+.times{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.time{display:flex;align-items:center;gap:6px;font-weight:700;font-size:12px}
+.time img{width:24px;height:24px;background:white;border-radius:50%;padding:2px;object-fit:contain}
+.vs{color:#475569;font-size:11px}
+.odds{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px}
+.odd-btn{background:#0f172a;border:1px solid #334155;color:#cbd5e1;padding:7px 2px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;text-align:center}
+.odd-btn:hover{border-color:#22c55e}
+.odd-btn.selecionado{background:#22c55e;color:white;border-color:#22c55e}
+.odd-btn small{display:block;font-size:9px;font-weight:400;color:#94a3b8;margin-top:2px}
+.odd-btn.selecionado small{color:white}
+.bilhete{background:#1e293b;border-radius:10px;padding:14px;height:fit-content;position:sticky;top:20px;border:1px solid #22c55e}
+.bilhete h3{font-size:14px;margin-bottom:10px;display:flex;justify-content:space-between}
+.bilhete-vazio{color:#64748b;font-size:12px;text-align:center;padding:20px 0}
+.item-bilhete{background:#0f172a;border-radius:8px;padding:8px;margin-bottom:8px;font-size:11px;display:flex;justify-content:space-between;align-items:center}
+.item-bilhete b{color:#22c55e}
+.total{border-top:1px solid #334155;padding-top:10px;margin-top:10px;font-size:12px}
+.total div{display:flex;justify-content:space-between;margin-bottom:6px}
+.input-valor{width:100%;background:#0f172a;border:1px solid #334155;color:white;padding:8px;border-radius:8px;margin:8px 0;font-size:13px}
+.btn-gerar{width:100%;background:#22c55e;color:white;border:none;padding:10px;border-radius:8px;font-weight:800;cursor:pointer;margin-top:6px}
+.btn-limpar{width:100%;background:transparent;border:1px solid #334155;color:#94a3b8;padding:7px;border-radius:8px;font-size:11px;cursor:pointer;margin-top:6px}
+</style>
+</head>
+<body>
+<header><div class="logo">BETSCORE</div></header>
+<div class="menu">
+<a href="main.html">Notícias do Dia</a>
+<a href="jogos.html">Jogos em Destaques</a>
+<a href="previsoes.html" class="ativo">Previsões dos Jogos</a>
+</div>
+
+<div class="container">
+<h1 class="titulo">PREVISÕES DOS JOGOS</h1>
+<p class="sub" id="sub">Buscando odds reais da Betano...</p>
+<div class="lista-jogos" id="lista"><p style="color:#64748b;text-align:center;padding:20px">Carregando jogos com API-Football...</p></div>
+<div class="bilhete">
+<h3>🎟️ Meu Bilhete <span id="qtd">0</span></h3>
+<div id="itens"><div class="bilhete-vazio">Nenhuma seleção ainda<br>Clique nas odds ao lado</div></div>
+<div class="total" id="total" style="display:none">
+<div><span>Odd Total:</span><b id="oddTotal">1.00</b></div>
+<input type="number" id="valor" class="input-valor" placeholder="Valor R$ 10" value="10" oninput="calcular()">
+<div><span>Retorno:</span><b id="retorno" style="color:#22c55e">R$ 0,00</b></div>
+<button class="btn-gerar" onclick="copiarBilhete()">COPIAR BILHETE</button>
+<button class="btn-limpar" onclick="limpar()">Limpar tudo</button>
+</div>
+</div>
+</div>
+
+<script>
+const API_KEY = "SUA_CHAVE_AQUI"; // TROCA AQUI
+let bilhete = [];
+
+async function buscarFixtures() {
+  const res = await fetch("https://v3.football.api-sports.io/fixtures?league=71&season=2025&next=10", {
+    headers: { "x-apisports-key": API_KEY }
+  });
+  const data = await res.json();
+  if(data.errors && Object.keys(data.errors).length > 0){ throw new Error(JSON.stringify(data.errors)); }
+  return data.response;
+}
+
+async function buscarOdds(fixtureId) {
+  try {
+    const res = await fetch(`https://v3.football.api-sports.io/odds?fixture=${fixtureId}&bookmaker=8`, {
+      headers: { "x-apisports-key": API_KEY }
+    });
+    const data = await res.json();
+    return data.response[0] || null;
+  } catch(e) { return null; }
+}
+
+async function carregar() {
+  const lista = document.getElementById("lista");
+  const sub = document.getElementById("sub");
+  try {
+    if(API_KEY.includes("SUA_CHAVE") || API_KEY.includes("XxXx")){
+      sub.innerText = "⚠️ COLOQUE SUA CHAVE API-FOOTBALL NO CÓDIGO - Usando odds demonstrativas";
+      throw new Error("sem chave");
+    }
+    const fixtures = await buscarFixtures();
+    sub.innerText = `Odds reais Betano - ${fixtures.length} jogos encontrados`;
+    lista.innerHTML = "";
+    for(let f of fixtures.slice(0,8)) {
+      const oddsData = await buscarOdds(f.fixture.id);
+      let oddCasa = "1.90", oddEmp = "3.20", oddFora = "4.00";
+      if(oddsData && oddsData.bookmakers[0]){
+        const bet12 = oddsData.bookmakers[0].bets.find(b => b.name == "Match Winner");
+        if(bet12){
+          oddCasa = bet12.values.find(v => v.value == "Home")?.odd || oddCasa;
+          oddEmp = bet12.values.find(v => v.value == "Draw")?.odd || oddEmp;
+          oddFora = bet12.values.find(v => v.value == "Away")?.odd || oddFora;
+        }
+      }
+      const dataJogo = new Date(f.fixture.date).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+      lista.innerHTML += `
+      <div class="card-jogo">
+        <div class="liga"><span>BRA - ${dataJogo}</span><span>${f.fixture.status.short}</span></div>
+        <div class="times"><div class="time"><img src="${f.teams.home.logo}"><span>${f.teams.home.name}</span></div><span class="vs">VS</span><div class="time"><span>${f.teams.away.name}</span><img src="${f.teams.away.logo}"></div></div>
+        <div class="odds">
+          <button class="odd-btn" id="btn-${f.fixture.id}-casa" onclick="addBilhete(${f.fixture.id},'${f.teams.home.name}','Casa',${oddCasa})">1 <small>${oddCasa}</small></button>
+          <button class="odd-btn" id="btn-${f.fixture.id}-emp" onclick="addBilhete(${f.fixture.id},'${f.teams.home.name} x ${f.teams.away.name}','Empate',${oddEmp})">X <small>${oddEmp}</small></button>
+          <button class="odd-btn" id="btn-${f.fixture.id}-fora" onclick="addBilhete(${f.fixture.id},'${f.teams.away.name}','Fora',${oddFora})">2 <small>${oddFora}</small></button>
+          <button class="odd-btn" id="btn-${f.fixture.id}-over" onclick="addBilhete(${f.fixture.id},'${f.teams.home.name} x ${f.teams.away.name}','+2.5 Gols',1.85)">+2.5<small>1.85</small></button>
+        </div>
+      </div>`;
+    }
+  } catch(e) {
+    // FALLBACK DEMONSTRATIVO
+    console.log(e);
+    const jogosDemo = [{home:{name:"Flamengo",logo:"https://media.api-sports.io/football/teams/127.png"},away:{name:"Palmeiras",logo:"https://media.api-sports.io/football/teams/121.png"},id:1},{home:{name:"Corinthians",logo:"https://media.api-sports.io/football/teams/131.png"},away:{name:"São Paulo",logo:"https://media.api-sports.io/football/teams/126.png"},id:2}];
+    lista.innerHTML = "";
+    jogosDemo.forEach(j=>{
+      lista.innerHTML += `<div class="card-jogo"><div class="liga"><span>BRA - DEMO</span><span>NS</span></div><div class="times"><div class="time"><img src="${j.home.logo}"><span>${j.home.name}</span></div><span class="vs">VS</span><div class="time"><span>${j.away.name}</span><img src="${j.away.logo}"></div></div><div class="odds"><button class="odd-btn" id="btn-${j.id}-casa" onclick="addBilhete(${j.id},'${j.home.name}','Casa',1.85)">1 <small>1.85</small></button><button class="odd-btn" id="btn-${j.id}-emp" onclick="addBilhete(${j.id},'${j.home.name} x ${j.away.name}','Empate',3.30)">X <small>3.30</small></button><button class="odd-btn" id="btn-${j.id}-fora" onclick="addBilhete(${j.id},'${j.away.name}','Fora',4.10)">2 <small>4.10</small></button><button class="odd-btn" id="btn-${j.id}-over" onclick="addBilhete(${j.id},'${j.home.name} x ${j.away.name}','+2.5 Gols',1.90)">+2.5<small>1.90</small></button></div></div>`;
+    });
+  }
+}
+
+function addBilhete(idJogo,jogo,escolha,odd){
+  const existe = bilhete.findIndex(b=>b.idJogo===idJogo);
+  document.querySelectorAll(`[id^="btn-${idJogo}-"]`).forEach(b=>b.classList.remove('selecionado'));
+  if(existe>=0 && bilhete[existe].escolha===escolha){ bilhete.splice(existe,1); render(); return; }
+  if(existe>=0) bilhete.splice(existe,1);
+  bilhete.push({idJogo,jogo,escolha,odd});
+  const map={'Casa':`btn-${idJogo}-casa`,'Empate':`btn-${idJogo}-emp`,'Fora':`btn-${idJogo}-fora`,'+2.5 Gols':`btn-${idJogo}-over`};
+  const btn = document.getElementById(map[escolha]); if(btn) btn.classList.add('selecionado');
+  render();
+}
+function render(){
+  const div=document.getElementById("itens"), tot=document.getElementById("total"), qtd=document.getElementById("qtd");
+  qtd.innerText=bilhete.length;
+  if(bilhete.length===0){ div.innerHTML='<div class="bilhete-vazio">Nenhuma seleção ainda<br>Clique nas odds ao lado</div>'; tot.style.display='none'; return; }
+  tot.style.display='block'; div.innerHTML=''; let oddTotal=1;
+  bilhete.forEach((b,i)=>{ oddTotal*=parseFloat(b.odd); div.innerHTML+=`<div class="item-bilhete"><div><div style="font-weight:700">${b.jogo}</div><div>${b.escolha} @ <b>${b.odd}</b></div></div><span onclick="remover(${i})" style="cursor:pointer;color:#ef4444">✕</span></div>`; });
+  document.getElementById("oddTotal").innerText=oddTotal.toFixed(2); calcular();
+}
+function calcular(){ const v=parseFloat(document.getElementById("valor").value)||0; const o=parseFloat(document.getElementById("oddTotal").innerText)||0; document.getElementById("retorno").innerText=`R$ ${(v*o).toFixed(2)}`; }
+function remover(i){ const id=bilhete[i].idJogo; document.querySelectorAll(`[id^="btn-${id}-"]`).forEach(b=>b.classList.remove('selecionado')); bilhete.splice(i,1); render(); }
+function limpar(){ bilhete=[]; document.querySelectorAll(".odd-btn").forEach(b=>b.classList.remove('selecionado')); render(); }
+function copiarBilhete(){
+  let texto=`🎟️ BILHETE BETSCORE\n\n`; bilhete.forEach(b=>texto+=`${b.jogo} - ${b.escolha} @ ${b.odd}\n`); texto+=`\nOdd Total: ${document.getElementById("oddTotal").innerText}\nValor: R$ ${document.getElementById("valor").value}\nRetorno: ${document.getElementById("retorno").innerText}\n\nGerado em BETSCORE`;
+  navigator.clipboard.writeText(texto).then(()=>alert("Bilhete copiado!"));
+}
+document.addEventListener("DOMContentLoaded",carregar);
+</script>
+</body>
+</html>
